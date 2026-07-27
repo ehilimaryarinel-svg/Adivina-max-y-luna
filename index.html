@@ -1,180 +1,57 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>Luna & Max 🐾 ¿Cuántos cachorritos vendrán?</title>
-<meta name="description" content="Adivina cuántos cachorritos tendrán Luna y Max. ¡Participa y deja tu apuesta!" />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐾</text></svg>" />
-<link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¿Cuántos cachorritos? · Luna &amp; Max</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- Fondo animado de huellitas y corazones -->
-  <div class="floaters" aria-hidden="true">
-    <span class="floater">🐾</span>
-    <span class="floater">💛</span>
-    <span class="floater">🐾</span>
-    <span class="floater">💕</span>
-    <span class="floater">🐾</span>
-    <span class="floater">💙</span>
-    <span class="floater">🐾</span>
-    <span class="floater">💛</span>
-    <span class="floater">🐾</span>
-    <span class="floater">💕</span>
-    <span class="floater">🐾</span>
-    <span class="floater">💙</span>
-  </div>
+  <main class="page">
 
-  <!-- Banner de celebración (oculto hasta que se publique el resultado) -->
-  <div id="celebration-banner" class="celebration-banner hidden">
-    <div class="celebration-content">
-      <span class="celebration-emoji">🎉🐶🎉</span>
-      <h2>¡Ya nacieron!</h2>
-      <p id="celebration-text"></p>
-    </div>
-  </div>
+    <header class="header">
+      <p class="eyebrow">Luna &amp; Max</p>
+      <h1 class="title">¿Cómo serán sus cachorritos?</h1>
+    </header>
 
-  <header class="hero">
-    <div class="hero-inner">
-      <div class="hero-badge">🐕‍🦺 + 🐕 = ❓</div>
-      <h1>Luna <span class="amp">&</span> Max</h1>
-      <p class="hero-sub">¿Cuántos cachorritos vendrán?</p>
-      <p class="hero-story">
-        Luna (mamá) y Max (papá, todo un caballero estilo Labrador) están esperando a su camada
-        y necesitamos tu ayuda para adivinar cuántos cachorritos van a tener. ¡Participa,
-        arma tu propia camita y deja tu apuesta!
+    <section class="selector-card">
+
+      <div class="count-display" aria-live="polite">
+        <span class="count-number" id="countNumber">6</span>
+        <span class="count-label" id="countLabel">cachorritos</span>
+      </div>
+
+      <div class="slider-wrap">
+        <input
+          type="range"
+          id="puppySlider"
+          class="puppy-slider"
+          min="1"
+          max="12"
+          step="1"
+          value="6"
+          aria-label="Número de cachorritos"
+        >
+      </div>
+
+      <div class="puppy-bed" id="puppyBed" role="list" aria-label="Cachorritos"></div>
+
+      <p class="instructions">
+        Toca a cada cachorrito para elegir si es niño o niña<br>
+        y el tono de su pelaje.
       </p>
-      <a href="#camita" class="btn btn-primary hero-cta">Quiero participar 🐾</a>
-    </div>
-  </header>
 
-  <main>
-    <!-- SECCIÓN: Selector y camita virtual -->
-    <section id="camita" class="section">
-      <h2 class="section-title">Arma la camita de Luna 🛏️</h2>
-      <p class="section-sub">Mueve el control y elige cuántos cachorritos crees que nacerán (1 a 12).</p>
-
-      <div class="counter-wrap">
-        <span class="counter-number" id="counterDisplay">3</span>
-        <span class="counter-label">cachorritos</span>
-      </div>
-
-      <input type="range" id="puppySlider" min="1" max="12" value="3" step="1" class="slider" />
-
-      <div class="bed">
-        <div class="bed-shadow"></div>
-        <div id="puppyBed" class="puppy-bed"></div>
-      </div>
-
-      <p class="hint">✨ Toca a cada cachorrito para elegir si es niño o niña y el tono de su pelaje.</p>
     </section>
 
-    <!-- SECCIÓN: Formulario -->
-    <section id="registro" class="section section-alt">
-      <h2 class="section-title">Deja tu apuesta 💌</h2>
-      <form id="predictionForm" class="form-card">
-        <label class="field">
-          <span>Tu nombre o apodo</span>
-          <input type="text" id="nameInput" placeholder="Ej. Tía Carla" maxlength="40" required />
-        </label>
+    <footer class="footer">
+      <p>Hecho con 🐾 para la camada de Luna &amp; Max</p>
+    </footer>
 
-        <label class="field">
-          <span>Un mensaje lindo para Luna y Max 🐶</span>
-          <textarea id="messageInput" placeholder="Ej. ¡Que nazcan sanitos y hermosos!" maxlength="200" rows="3" required></textarea>
-        </label>
-
-        <div class="field-static">
-          <span>Tu apuesta: <strong id="formCountPreview">3</strong> cachorritos con la camita que armaste arriba 👆</span>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Enviar mi apuesta 🎯</button>
-        <p id="formFeedback" class="form-feedback hidden"></p>
-      </form>
-    </section>
-
-    <!-- SECCIÓN: Muro de la comunidad -->
-    <section id="muro" class="section">
-      <h2 class="section-title">Muro de la comunidad 🐕💬</h2>
-
-      <div class="stats-bar">
-        <div class="stat">
-          <span class="stat-value" id="statAverage">–</span>
-          <span class="stat-label">promedio de la comunidad</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="statTotal">0</span>
-          <span class="stat-label">apuestas registradas</span>
-        </div>
-      </div>
-
-      <div id="wallEmpty" class="wall-empty">
-        Todavía no hay apuestas. ¡Sé la primera persona en participar! 🐾
-      </div>
-
-      <div id="wallGrid" class="wall-grid"></div>
-    </section>
   </main>
-
-  <footer class="site-footer">
-    <p>Hecho con 💛 para Luna &amp; Max</p>
-    <button id="adminAccessBtn" class="admin-access" title="Acceso de la dueña">🔒</button>
-  </footer>
-
-  <!-- MODAL: personalizar cachorrito -->
-  <div id="puppyModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close" id="puppyModalClose" aria-label="Cerrar">✕</button>
-      <h3>Cachorrito <span id="puppyModalIndex"></span></h3>
-
-      <p class="modal-label">¿Niño o niña?</p>
-      <div class="sex-options">
-        <button type="button" class="sex-btn sex-boy" data-sex="niño">
-          <span class="sex-icon">🎀</span> Niño
-        </button>
-        <button type="button" class="sex-btn sex-girl" data-sex="niña">
-          <span class="sex-icon">🎗️</span> Niña
-        </button>
-      </div>
-
-      <p class="modal-label">Tono de su pelaje</p>
-      <div class="shade-options" id="shadeOptions"></div>
-    </div>
-  </div>
-
-  <!-- MODAL: panel de administración -->
-  <div id="adminModal" class="modal hidden">
-    <div class="modal-card admin-card">
-      <button class="modal-close" id="adminModalClose" aria-label="Cerrar">✕</button>
-      <h3>Panel de la dueña 🐕‍🦺</h3>
-
-      <div id="adminLogin">
-        <label class="field">
-          <span>Contraseña</span>
-          <input type="password" id="adminPasswordInput" placeholder="••••••••" />
-        </label>
-        <button class="btn btn-primary" id="adminLoginBtn">Entrar</button>
-        <p id="adminLoginError" class="form-feedback hidden"></p>
-      </div>
-
-      <div id="adminPanel" class="hidden">
-        <p class="modal-label">Publicar el resultado real 🎉</p>
-        <label class="field">
-          <span>Número real de cachorritos nacidos</span>
-          <input type="number" id="realCountInput" min="0" max="20" />
-        </label>
-        <label class="field">
-          <span>Fecha de nacimiento (opcional)</span>
-          <input type="date" id="realDateInput" />
-        </label>
-        <button class="btn btn-primary" id="publishResultBtn">Publicar resultado 🎊</button>
-
-        <hr class="admin-divider" />
-        <button class="btn btn-secondary" id="resetContestBtn">Reiniciar concurso (borra todo)</button>
-        <p id="adminFeedback" class="form-feedback hidden"></p>
-      </div>
-    </div>
-  </div>
 
   <script src="script.js"></script>
 </body>

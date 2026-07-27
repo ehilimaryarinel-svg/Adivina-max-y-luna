@@ -1,451 +1,262 @@
-// ============================================================
-// Luna & Max — Lógica de la app
-// Todo se guarda en localStorage del navegador de cada visitante.
-// ============================================================
+/* =========================================================
+   Luna & Max · Selector de cachorritos
+   script.js — módulos: Storage, PuppyArt, Bed, Slider, App
+   ========================================================= */
 
-const STORAGE_KEYS = {
-  predictions: 'lunamax_predictions',
-  result: 'lunamax_result',
-  adminSession: 'lunamax_admin_ok',
+const STORAGE_KEY = "lunaMaxPuppyGenders";
+
+/* ---------------------------------------------------------
+   Módulo Storage — persiste el género de cada cachorrito
+   --------------------------------------------------------- */
+const Storage = {
+  read() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (err) {
+      console.warn("No se pudo leer el estado guardado:", err);
+      return {};
+    }
+  },
+
+  write(state) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (err) {
+      console.warn("No se pudo guardar el estado:", err);
+    }
+  },
+
+  getGender(id, fallback) {
+    const state = this.read();
+    return state[id] || fallback;
+  },
+
+  setGender(id, gender) {
+    const state = this.read();
+    state[id] = gender;
+    this.write(state);
+  },
 };
 
-// Cambia esta contraseña por la que quieras usar para el panel de la dueña.
-const ADMIN_PASSWORD = 'LunaYMax2026';
+/* ---------------------------------------------------------
+   Módulo PuppyArt — genera el SVG detallado de cada cabeza
+   --------------------------------------------------------- */
+const PuppyArt = {
+  // Paletas de pelaje: [claro, oscuro] para el degradado
+  furPalettes: [
+    ["#fbe9c6", "#f3d29c"], // crema
+    ["#eec18a", "#cf9556"], // beige/tostado
+    ["#a97a56", "#6e4a30"], // marrón chocolate
+  ],
 
-// Tonos de pelaje inspirados en Luna y papá Max (labrador dorado)
-const FUR_SHADES = [
-  { id: 'miel',      hex: '#e3a85e', label: 'Miel' },
-  { id: 'dorado',    hex: '#f0c27b', label: 'Dorado' },
-  { id: 'crema',     hex: '#f6e4c3', label: 'Crema' },
-  { id: 'caramelo',  hex: '#c9843a', label: 'Caramelo' },
-  { id: 'chocolate', hex: '#8b5e3c', label: 'Chocolate' },
-];
+  bowColors: {
+    hembra: { light: "#cdeaff", dark: "#a9def2" }, // azul cielo pastel
+    macho: { light: "#ffd6e6", dark: "#ffb9d6" }, // rosa pastel
+  },
 
-// ------------------------------------------------------------
-// Estado en memoria de la camita que se está armando
-// ------------------------------------------------------------
-let currentCount = 3;
-let puppyDraft = []; // [{ sex: 'niño'|'niña'|null, shade: 'miel' }]
-let activePuppyIndex = null;
+  furFor(index) {
+    return this.furPalettes[index % this.furPalettes.length];
+  },
 
-function defaultPuppy() {
-  return { sex: null, shade: FUR_SHADES[Math.floor(Math.random() * FUR_SHADES.length)].id };
-}
+  /**
+   * Devuelve el markup SVG completo de una cabeza de cachorrito.
+   * @param {number} id - índice único del cachorrito (para IDs de gradiente)
+   * @param {string} gender - "hembra" | "macho"
+   */
+  render(id, gender) {
+    const [furLight, furDark] = this.furFor(id);
+    const bow = this.bowColors[gender];
+    const uid = `p${id}`;
 
-function syncDraftLength() {
-  while (puppyDraft.length < currentCount) puppyDraft.push(defaultPuppy());
-  while (puppyDraft.length > currentCount) puppyDraft.pop();
-}
+    return `
+<svg class="puppy-svg" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <linearGradient id="fur-${uid}" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${furLight}" />
+      <stop offset="100%" stop-color="${furDark}" />
+    </linearGradient>
+    <linearGradient id="ear-${uid}" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${furDark}" />
+      <stop offset="100%" stop-color="${furDark}" stop-opacity="0.85" />
+    </linearGradient>
+    <linearGradient id="muzzle-${uid}" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff8ec" />
+      <stop offset="100%" stop-color="${furLight}" />
+    </linearGradient>
+    <linearGradient id="bow-${uid}" class="bow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${bow.light}" />
+      <stop offset="100%" stop-color="${bow.dark}" />
+    </linearGradient>
+  </defs>
 
-// ------------------------------------------------------------
-// Render de la camita
-// ------------------------------------------------------------
-const puppyBedEl = document.getElementById('puppyBed');
-const counterDisplay = document.getElementById('counterDisplay');
-const formCountPreview = document.getElementById('formCountPreview');
-const slider = document.getElementById('puppySlider');
+  <!-- orejas caídas -->
+  <path d="M38,44 C18,50 8,80 20,104 C27,117 46,113 49,97 C52,80 46,56 38,44 Z" fill="url(#ear-${uid})" />
+  <path d="M102,44 C122,50 132,80 120,104 C113,117 94,113 91,97 C88,80 94,56 102,44 Z" fill="url(#ear-${uid})" />
 
-function shadeHex(id) {
-  const found = FUR_SHADES.find(s => s.id === id);
-  return found ? found.hex : FUR_SHADES[0].hex;
-}
+  <!-- cabeza -->
+  <path d="M70,18 C97,18 118,40 118,68 C118,97 99,120 70,120 C41,120 22,97 22,68 C22,40 43,18 70,18 Z" fill="url(#fur-${uid})" />
 
-function bowFor(sex) {
-  // Según lo pedido: Niño = lazo/collar rosa, Niña = lazo/collar azul
-  if (sex === 'niño') return '🎀';
-  if (sex === 'niña') return '🎗️';
-  return '';
-}
+  <!-- mejillas sonrosadas -->
+  <ellipse cx="38" cy="88" rx="9" ry="6" fill="#ffb9d6" opacity="0.35" />
+  <ellipse cx="102" cy="88" rx="9" ry="6" fill="#ffb9d6" opacity="0.35" />
 
-function renderPuppyBed(animateNew) {
-  const existingEls = Array.from(puppyBedEl.children);
+  <!-- hocico -->
+  <ellipse cx="70" cy="94" rx="24" ry="18" fill="url(#muzzle-${uid})" />
 
-  // Quitar cachorritos sobrantes con animación de salida
-  if (existingEls.length > currentCount) {
-    for (let i = currentCount; i < existingEls.length; i++) {
-      existingEls[i].classList.add('leaving');
-      setTimeout(() => existingEls[i].remove(), 220);
-    }
-  }
+  <!-- ojos -->
+  <ellipse cx="53" cy="68" rx="7" ry="9" fill="#4a3327" />
+  <ellipse cx="87" cy="68" rx="7" ry="9" fill="#4a3327" />
+  <circle cx="55.5" cy="64.5" r="2.1" fill="#ffffff" opacity="0.9" />
+  <circle cx="89.5" cy="64.5" r="2.1" fill="#ffffff" opacity="0.9" />
 
-  for (let i = 0; i < currentCount; i++) {
-    let el = puppyBedEl.children[i];
-    const data = puppyDraft[i];
-    if (!el) {
-      el = document.createElement('div');
-      el.className = 'puppy';
-      el.dataset.index = i;
-      el.innerHTML = `
-        <div class="puppy-ear left"></div>
-        <div class="puppy-ear right"></div>
-        <div class="puppy-head">
-          <div class="puppy-bow">${bowFor(data.sex)}</div>
-          <div class="puppy-face">
-            <div class="puppy-eye left"></div>
-            <div class="puppy-eye right"></div>
-            <div class="puppy-nose"></div>
-          </div>
-        </div>
-        <div class="puppy-body"></div>
-        <div class="puppy-index-tag">#${i + 1}</div>
-      `;
-      el.addEventListener('click', () => openPuppyModal(i));
-      puppyBedEl.appendChild(el);
-    }
-    // Colorear según tono elegido
-    const hex = shadeHex(data.shade);
-    el.querySelector('.puppy-head').style.background = hex;
-    el.querySelector('.puppy-ear.left').style.background = hex;
-    el.querySelector('.puppy-ear.right').style.background = hex;
-    el.querySelector('.puppy-body').style.background = hex;
-    el.querySelector('.puppy-bow').textContent = bowFor(data.sex);
-  }
-}
+  <!-- nariz -->
+  <ellipse cx="70" cy="86" rx="9" ry="6.5" fill="#4a3327" />
+  <ellipse cx="67" cy="83.5" r="1.6" fill="#ffffff" opacity="0.55" />
 
-function bumpCounter() {
-  counterDisplay.classList.add('bump');
-  setTimeout(() => counterDisplay.classList.remove('bump'), 150);
-}
+  <!-- boca -->
+  <path d="M62,96 Q70,104 78,96" fill="none" stroke="#4a3327" stroke-width="2.4" stroke-linecap="round" />
 
-slider.addEventListener('input', () => {
-  currentCount = parseInt(slider.value, 10);
-  counterDisplay.textContent = currentCount;
-  formCountPreview.textContent = currentCount;
-  bumpCounter();
-  syncDraftLength();
-  renderPuppyBed(true);
-});
+  <!-- lazo -->
+  <g class="bow" data-role="bow">
+    <path d="M53,16 C42,6 30,10 33,21 C36,30 48,27 53,16 Z" fill="url(#bow-${uid})" stroke="#ffffff" stroke-width="1" />
+    <path d="M87,16 C98,6 110,10 107,21 C104,30 92,27 87,16 Z" fill="url(#bow-${uid})" stroke="#ffffff" stroke-width="1" />
+    <circle cx="70" cy="17" r="7" fill="url(#bow-${uid})" stroke="#ffffff" stroke-width="1" />
+  </g>
+</svg>`.trim();
+  },
+};
 
-// ------------------------------------------------------------
-// Modal de personalización de cachorrito
-// ------------------------------------------------------------
-const puppyModal = document.getElementById('puppyModal');
-const puppyModalIndex = document.getElementById('puppyModalIndex');
-const shadeOptionsEl = document.getElementById('shadeOptions');
+/* ---------------------------------------------------------
+   Módulo Bed — maneja la camada (grid) de cachorritos
+   --------------------------------------------------------- */
+const Bed = {
+  el: null,
 
-function buildShadeOptions() {
-  shadeOptionsEl.innerHTML = '';
-  FUR_SHADES.forEach(shade => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'shade-swatch';
-    btn.style.background = shade.hex;
-    btn.title = shade.label;
-    btn.dataset.shade = shade.id;
-    btn.addEventListener('click', () => {
-      if (activePuppyIndex === null) return;
-      puppyDraft[activePuppyIndex].shade = shade.id;
-      refreshShadeSelection();
-      renderPuppyBed(false);
-    });
-    shadeOptionsEl.appendChild(btn);
-  });
-}
+  init(el) {
+    this.el = el;
+  },
 
-function refreshShadeSelection() {
-  const data = puppyDraft[activePuppyIndex];
-  Array.from(shadeOptionsEl.children).forEach(btn => {
-    btn.classList.toggle('selected', btn.dataset.shade === data.shade);
-  });
-}
+  puppyId(index) {
+    return `cachorro${index + 1}`;
+  },
 
-function refreshSexSelection() {
-  const data = puppyDraft[activePuppyIndex];
-  document.querySelectorAll('.sex-btn').forEach(btn => {
-    btn.classList.toggle('selected', btn.dataset.sex === data.sex);
-  });
-}
+  defaultGender(index) {
+    // Alterna por defecto: par -> hembra, impar -> macho
+    return index % 2 === 0 ? "hembra" : "macho";
+  },
 
-function openPuppyModal(index) {
-  activePuppyIndex = index;
-  puppyModalIndex.textContent = `#${index + 1}`;
-  refreshSexSelection();
-  refreshShadeSelection();
-  puppyModal.classList.remove('hidden');
-}
+  createPuppyEl(index) {
+    const id = this.puppyId(index);
+    const gender = Storage.getGender(id, this.defaultGender(index));
 
-document.getElementById('puppyModalClose').addEventListener('click', () => {
-  puppyModal.classList.add('hidden');
-});
+    const wrapper = document.createElement("button");
+    wrapper.type = "button";
+    wrapper.className = "puppy";
+    wrapper.dataset.id = id;
+    wrapper.dataset.index = String(index);
+    wrapper.dataset.gender = gender;
+    wrapper.setAttribute("role", "listitem");
+    wrapper.setAttribute(
+      "aria-label",
+      `Cachorrito número ${index + 1}, ${gender}. Toca para cambiar.`
+    );
 
-puppyModal.addEventListener('click', (e) => {
-  if (e.target === puppyModal) puppyModal.classList.add('hidden');
-});
-
-document.querySelectorAll('.sex-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    if (activePuppyIndex === null) return;
-    puppyDraft[activePuppyIndex].sex = btn.dataset.sex;
-    refreshSexSelection();
-    renderPuppyBed(false);
-  });
-});
-
-// ------------------------------------------------------------
-// Formulario de registro
-// ------------------------------------------------------------
-const form = document.getElementById('predictionForm');
-const formFeedback = document.getElementById('formFeedback');
-
-function getPredictions() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.predictions)) || [];
-  } catch {
-    return [];
-  }
-}
-
-function savePredictions(list) {
-  localStorage.setItem(STORAGE_KEYS.predictions, JSON.stringify(list));
-}
-
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = document.getElementById('nameInput').value.trim();
-  const message = document.getElementById('messageInput').value.trim();
-
-  if (!name || !message) return;
-
-  const prediction = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    name,
-    message,
-    count: currentCount,
-    puppies: puppyDraft.map(p => ({ sex: p.sex, shade: p.shade })),
-    timestamp: new Date().toISOString(),
-  };
-
-  const list = getPredictions();
-  list.push(prediction);
-  savePredictions(list);
-
-  formFeedback.textContent = '¡Gracias! Tu apuesta ya está en el muro de la comunidad 🎉';
-  formFeedback.classList.remove('hidden', 'error');
-  form.reset();
-  document.getElementById('messageInput').value = '';
-
-  renderWall();
-
-  setTimeout(() => {
-    document.getElementById('muro').scrollIntoView({ behavior: 'smooth' });
-  }, 500);
-});
-
-// ------------------------------------------------------------
-// Muro de la comunidad + estadísticas
-// ------------------------------------------------------------
-const wallGrid = document.getElementById('wallGrid');
-const wallEmpty = document.getElementById('wallEmpty');
-const statAverage = document.getElementById('statAverage');
-const statTotal = document.getElementById('statTotal');
-
-function getResult() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.result));
-  } catch {
-    return null;
-  }
-}
-
-function formatDate(iso) {
-  try {
-    return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-  } catch {
-    return '';
-  }
-}
-
-function renderWall() {
-  const list = getPredictions();
-  const result = getResult();
-
-  statTotal.textContent = list.length;
-  statAverage.textContent = list.length
-    ? (list.reduce((sum, p) => sum + p.count, 0) / list.length).toFixed(1)
-    : '–';
-
-  wallGrid.innerHTML = '';
-
-  if (!list.length) {
-    wallEmpty.classList.remove('hidden');
-    return;
-  }
-  wallEmpty.classList.add('hidden');
-
-  // Si ya hay resultado, ordenamos por cercanía al número real
-  let sorted = [...list];
-  let minDiff = null;
-  if (result && typeof result.count === 'number') {
-    sorted.forEach(p => { p.__diff = Math.abs(p.count - result.count); });
-    sorted.sort((a, b) => a.__diff - b.__diff);
-    minDiff = Math.min(...sorted.map(p => p.__diff));
-  } else {
-    sorted.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  }
-
-  sorted.forEach(p => {
-    const card = document.createElement('div');
-    card.className = 'wall-card';
-
-    let badgeHtml = '';
-    if (result && typeof result.count === 'number') {
-      if (p.__diff === 0) {
-        card.classList.add('winner-exact');
-        badgeHtml = `<span class="wall-card-badge badge-exact">🎯 ¡Adivinó exacto!</span>`;
-      } else if (p.__diff === minDiff) {
-        card.classList.add('winner-close');
-        badgeHtml = `<span class="wall-card-badge badge-close">🐾 Más cercano/a</span>`;
-      }
-    }
-
-    const miniBed = (p.puppies || []).map(pup => {
-      const hex = shadeHex(pup.shade);
-      const ring = pup.sex === 'niño' ? '2px solid #ef9fbb' : pup.sex === 'niña' ? '2px solid #8fc7e0' : '2px solid transparent';
-      return `<span class="mini-puppy" style="background:${hex}; border:${ring};"></span>`;
-    }).join('');
-
-    card.innerHTML = `
-      <div class="wall-card-mini-bed">${miniBed}</div>
-      <span class="wall-card-name">${escapeHtml(p.name)}</span><span class="wall-card-count">${p.count} 🐶</span>
-      <p class="wall-card-message">"${escapeHtml(p.message)}"</p>
-      <div style="font-size:0.72rem; color:var(--coffee-soft); margin-top:6px;">${formatDate(p.timestamp)}</div>
-      ${badgeHtml}
+    wrapper.innerHTML = `
+      ${PuppyArt.render(index, gender)}
+      <span class="puppy-number">#${index + 1}</span>
     `;
-    wallGrid.appendChild(card);
-  });
-}
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+    wrapper.addEventListener("click", () => this.toggleGender(wrapper));
 
-// ------------------------------------------------------------
-// Celebración
-// ------------------------------------------------------------
-const celebrationBanner = document.getElementById('celebration-banner');
-const celebrationText = document.getElementById('celebration-text');
+    return wrapper;
+  },
 
-function renderCelebrationIfNeeded() {
-  const result = getResult();
-  if (result && typeof result.count === 'number') {
-    celebrationBanner.classList.remove('hidden');
-    const dateText = result.date ? ` el ${formatDate(result.date)}` : '';
-    celebrationText.textContent = `Luna y Max tuvieron ${result.count} cachorrito${result.count === 1 ? '' : 's'}${dateText} 🐾💛`;
-  } else {
-    celebrationBanner.classList.add('hidden');
-  }
-}
+  toggleGender(wrapper) {
+    const id = wrapper.dataset.id;
+    const index = Number(wrapper.dataset.index);
+    const current = wrapper.dataset.gender;
+    const next = current === "hembra" ? "macho" : "hembra";
 
-function launchConfetti() {
-  const colors = ['#e3a85e', '#f7c9d8', '#bfe1f0', '#f6e4c3', '#ef9fbb'];
-  const total = 120;
-  for (let i = 0; i < total; i++) {
-    const piece = document.createElement('div');
-    piece.className = 'confetti-piece';
-    const size = 6 + Math.random() * 8;
-    piece.style.width = `${size}px`;
-    piece.style.height = `${size * 0.4}px`;
-    piece.style.left = `${Math.random() * 100}vw`;
-    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-    const duration = 2.5 + Math.random() * 2;
-    piece.style.animationDuration = `${duration}s`;
-    piece.style.opacity = String(0.7 + Math.random() * 0.3);
-    document.body.appendChild(piece);
-    setTimeout(() => piece.remove(), duration * 1000 + 200);
-  }
-}
+    Storage.setGender(id, next);
+    wrapper.dataset.gender = next;
+    wrapper.setAttribute(
+      "aria-label",
+      `Cachorrito número ${index + 1}, ${next}. Toca para cambiar.`
+    );
 
-// ------------------------------------------------------------
-// Panel de administración
-// ------------------------------------------------------------
-const adminAccessBtn = document.getElementById('adminAccessBtn');
-const adminModal = document.getElementById('adminModal');
-const adminLogin = document.getElementById('adminLogin');
-const adminPanel = document.getElementById('adminPanel');
-const adminPasswordInput = document.getElementById('adminPasswordInput');
-const adminLoginBtn = document.getElementById('adminLoginBtn');
-const adminLoginError = document.getElementById('adminLoginError');
-const adminFeedback = document.getElementById('adminFeedback');
+    const svgHolder = wrapper.querySelector(".puppy-svg");
+    if (svgHolder) {
+      svgHolder.outerHTML = PuppyArt.render(index, next);
+    }
+  },
 
-adminAccessBtn.addEventListener('click', () => {
-  adminModal.classList.remove('hidden');
-  const isLoggedIn = sessionStorage.getItem(STORAGE_KEYS.adminSession) === 'true';
-  adminLogin.classList.toggle('hidden', isLoggedIn);
-  adminPanel.classList.toggle('hidden', !isLoggedIn);
-});
+  /** Ajusta el número de cachorritos visibles al valor del slider */
+  setCount(count) {
+    const current = this.el.querySelectorAll(".puppy").length;
 
-document.getElementById('adminModalClose').addEventListener('click', () => {
-  adminModal.classList.add('hidden');
-});
+    if (count > current) {
+      for (let i = current; i < count; i++) {
+        this.el.appendChild(this.createPuppyEl(i));
+      }
+    } else if (count < current) {
+      const toRemove = Array.from(this.el.querySelectorAll(".puppy")).slice(count);
+      toRemove.forEach((node) => {
+        node.classList.add("pop-out");
+        node.addEventListener(
+          "animationend",
+          () => node.remove(),
+          { once: true }
+        );
+      });
+    }
+  },
+};
 
-adminModal.addEventListener('click', (e) => {
-  if (e.target === adminModal) adminModal.classList.add('hidden');
-});
+/* ---------------------------------------------------------
+   Módulo Slider — sincroniza el input range con el texto y la camada
+   --------------------------------------------------------- */
+const Slider = {
+  input: null,
+  numberEl: null,
 
-adminLoginBtn.addEventListener('click', () => {
-  if (adminPasswordInput.value === ADMIN_PASSWORD) {
-    sessionStorage.setItem(STORAGE_KEYS.adminSession, 'true');
-    adminLogin.classList.add('hidden');
-    adminPanel.classList.remove('hidden');
-    adminLoginError.classList.add('hidden');
-    adminPasswordInput.value = '';
-  } else {
-    adminLoginError.textContent = 'Contraseña incorrecta 🔒';
-    adminLoginError.classList.remove('hidden');
-    adminLoginError.classList.add('error');
-  }
-});
+  init(input, numberEl) {
+    this.input = input;
+    this.numberEl = numberEl;
+    this.input.addEventListener("input", () => this.handleChange());
+  },
 
-document.getElementById('publishResultBtn').addEventListener('click', () => {
-  const countVal = document.getElementById('realCountInput').value;
-  const dateVal = document.getElementById('realDateInput').value;
+  handleChange() {
+    const value = Number(this.input.value);
+    this.updateNumber(value);
+    Bed.setCount(value);
+  },
 
-  if (countVal === '' || isNaN(Number(countVal))) {
-    adminFeedback.textContent = 'Ingresa un número válido de cachorritos.';
-    adminFeedback.classList.remove('hidden');
-    adminFeedback.classList.add('error');
-    return;
-  }
+  updateNumber(value) {
+    this.numberEl.textContent = value;
+    this.numberEl.classList.remove("bump");
+    // Forzar reflow para reiniciar la animación
+    void this.numberEl.offsetWidth;
+    this.numberEl.classList.add("bump");
+  },
+};
 
-  const result = { count: Number(countVal), date: dateVal || null };
-  localStorage.setItem(STORAGE_KEYS.result, JSON.stringify(result));
+/* ---------------------------------------------------------
+   App — arranque
+   --------------------------------------------------------- */
+const App = {
+  start() {
+    const slider = document.getElementById("puppySlider");
+    const numberEl = document.getElementById("countNumber");
+    const bedEl = document.getElementById("puppyBed");
 
-  adminFeedback.textContent = '¡Resultado publicado! 🎉';
-  adminFeedback.classList.remove('hidden', 'error');
+    Bed.init(bedEl);
+    Slider.init(slider, numberEl);
 
-  renderCelebrationIfNeeded();
-  renderWall();
-  launchConfetti();
-  setTimeout(launchConfetti, 600);
+    const initialValue = Number(slider.value);
+    numberEl.textContent = initialValue;
+    Bed.setCount(initialValue);
+  },
+};
 
-  setTimeout(() => {
-    adminModal.classList.add('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, 900);
-});
-
-document.getElementById('resetContestBtn').addEventListener('click', () => {
-  const confirmReset = confirm('¿Seguro que quieres borrar todas las apuestas y el resultado? Esta acción no se puede deshacer.');
-  if (!confirmReset) return;
-  localStorage.removeItem(STORAGE_KEYS.predictions);
-  localStorage.removeItem(STORAGE_KEYS.result);
-  renderWall();
-  renderCelebrationIfNeeded();
-  adminFeedback.textContent = 'Concurso reiniciado.';
-  adminFeedback.classList.remove('hidden', 'error');
-});
-
-// ------------------------------------------------------------
-// Inicialización
-// ------------------------------------------------------------
-function init() {
-  syncDraftLength();
-  buildShadeOptions();
-  renderPuppyBed(false);
-  renderWall();
-  renderCelebrationIfNeeded();
-}
-
-init();
+document.addEventListener("DOMContentLoaded", () => App.start());
